@@ -17,8 +17,8 @@ apply plugin: 'eclipse'
 apply plugin: 'maven-publish'
 
 version = '1.16-1.0'
-group = 'com.pyehouse.scheduler' // http://maven.apache.org/guides/mini/guide-naming-conventions.html
-archivesBaseName = 'scheduler'
+group = 'com.pyehouse.cronmc' // http://maven.apache.org/guides/mini/guide-naming-conventions.html
+archivesBaseName = 'cronmc'
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(8) // Mojang ships Java 8 to end users, so your mod should target Java 8.
 
@@ -59,7 +59,7 @@ minecraft {
             property 'forge.logging.console.level', 'debug'
 
             mods {
-                scheduler {
+                cronmc {
                     source sourceSets.main
                 }
             }
@@ -81,7 +81,7 @@ minecraft {
             property 'forge.logging.console.level', 'debug'
 
             mods {
-                scheduler {
+                cronmc {
                     source sourceSets.main
                 }
             }
@@ -103,10 +103,10 @@ minecraft {
             property 'forge.logging.console.level', 'debug'
 
             // Specify the modid for data generation, where to output the resulting resource, and where to look for existing resources.
-            args '--mod', 'scheduler', '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
+            args '--mod', 'cronmc', '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
 
             mods {
-                scheduler {
+                cronmc {
                     source sourceSets.main
                 }
             }
@@ -155,7 +155,7 @@ jar {
     archiveClassifier = 'slim'
     manifest {
         attributes([
-            "Specification-Title": "Scheduler",
+            "Specification-Title": "cronmc",
             "Specification-Vendor": "hextun",
             "Specification-Version": "1", // We are version 1 of ourselves
             "Implementation-Title": project.name,

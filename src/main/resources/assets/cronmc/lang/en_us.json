@@ -1,0 +1,7 @@
+{
+  "cronmc.start.success": "Cronmc started",
+  "cronmc.stop.success": "Cronmc stopped",
+  "cronmc.refresh.success": "Cronmc refreshed",
+  "cronmc.settz.success": "Cronmc timeZone successfully changed",
+  "cronmc.settz.failure": "Cronmc timeZone change failed"
+}
