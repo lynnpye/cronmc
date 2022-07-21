@@ -49,7 +49,9 @@ public class RunnableHandler extends TaskHandler {
                     final Runnable runner = runnable;
                     @Override
                     public void run() {
-                        this.runner.run();
+                        LOGGER.info(String.format("Cronmc starting Runnable %s", clazz.getName()));
+                        new Thread(runnable).start();
+                        LOGGER.info(String.format("Cronmc Runnable %s completed", clazz.getName()));
                     }
                 });
             }
@@ -64,7 +66,19 @@ public class RunnableHandler extends TaskHandler {
         @Override
         public void run() {
             MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
-            server.getCommands().performCommand(server.createCommandSourceStack(), "say Cronmc is running a TestRunnable");
+            server.getCommands().performCommand(server.createCommandSourceStack(),
+                    String.format("say Cronmc is running a Runnable %s",
+                            this.getClass().getName()
+                    ));
+            try {
+                Thread.sleep(10000);
+            } catch (InterruptedException e) {
+                LOGGER.throwing(e);
+            }
+            server.getCommands().performCommand(server.createCommandSourceStack(),
+                    String.format("say Cronmc is done running Runnable %s",
+                            this.getClass().getName()
+                    ));
         }
     }
 

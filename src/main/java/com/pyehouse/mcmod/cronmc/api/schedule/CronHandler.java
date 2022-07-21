@@ -3,6 +3,7 @@ package com.pyehouse.mcmod.cronmc.api.schedule;
 import com.pyehouse.mcmod.cronmc.api.ScheduleHandler;
 import com.pyehouse.mcmod.cronmc.api.ScheduledTask;
 import com.pyehouse.mcmod.cronmc.api.Cronmc;
+import it.sauronsoftware.cron4j.Scheduler;
 import it.sauronsoftware.cron4j.SchedulingPattern;
 import it.sauronsoftware.cron4j.Task;
 import it.sauronsoftware.cron4j.TaskExecutionContext;
@@ -11,20 +12,18 @@ import net.minecraftforge.fml.DistExecutor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import javax.annotation.Nonnull;
 import java.util.TimeZone;
-import java.util.function.Supplier;
 
 public class CronHandler extends ScheduleHandler {
     private static final Logger LOGGER = LogManager.getLogger();
 
     public static final String HANDLER_ID = "cron";
 
-    private static it.sauronsoftware.cron4j.Scheduler cron4j = null;
+    private static Scheduler cron4j = null;
 
-    public static it.sauronsoftware.cron4j.Scheduler cron() {
+    public static Scheduler cron() {
         if (cron4j == null) {
-            cron4j = new it.sauronsoftware.cron4j.Scheduler();
+            cron4j = new Scheduler();
         }
         return cron4j;
     }

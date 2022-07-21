@@ -8,13 +8,11 @@ import net.minecraft.util.Tuple;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.event.server.FMLServerAboutToStartEvent;
-import net.minecraftforge.fml.event.server.FMLServerStartedEvent;
 import net.minecraftforge.fml.event.server.FMLServerStoppingEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nonnull;
-import java.util.Arrays;
 import java.util.TimeZone;
 import java.util.function.Supplier;
 
@@ -34,18 +32,20 @@ public final class Cronmc {
 
     }
 
+    private boolean shuttingDown = false;
     private boolean startOnServerStart = true;
     private boolean ready = false;
     private Supplier<String[]> scheduleStringsSupplier = () -> new String[0];
 
-    public boolean isReady() { return ready; }
-    public void setReady(boolean ready) { this.ready = ready; }
+    protected void setShuttingDown(boolean shuttingDown) {
+        this.shuttingDown = shuttingDown;
+    }
 
     public boolean isStartOnServerStart() { return this.startOnServerStart; }
 
     public void failIfNotReady() {
-        if (!isReady()) {
-            throw new IllegalStateException("Unsafe function called on Scheduler while not ready");
+        if (!ready || shuttingDown) {
+            throw new IllegalStateException("Unsafe function called on Scheduler while not ready or shutting down");
         }
     }
 
@@ -92,8 +92,11 @@ public final class Cronmc {
      * @param scheduleStrings
      */
     public void resetSchedule(boolean startOnServerStart, TimeZone cronTimeZone, final String[] scheduleStrings) {
+        if (shuttingDown) return;
 
-        boolean wasReady = isReady();
+        this.startOnServerStart = startOnServerStart;
+
+        boolean wasReady = ready;
         LOGGER.info(String.format("Resetting schedule for Cronmc and retaining ready status '%s'", wasReady));
 
         stop();
@@ -111,31 +114,26 @@ public final class Cronmc {
         }
     }
 
-    public void scheduleTasks(@Nonnull String[] scheduleStrings) {
-        for (String scheduleString : scheduleStrings) {
-            ScheduledTask scheduledTask = new ScheduledTask(scheduleString);
-            if (scheduledTask.isValid()) {
-                schedule(scheduledTask);
-            }
-        }
-    }
-
     public void stop() {
         LOGGER.info("Stopping the Scheduler and setting ready to false");
-        setReady(false);
+        ready = false;
         CronHandler.stop();
         EventHandlerHelper.stop();
     }
 
     public void start() {
+        if (shuttingDown) return;
+
         LOGGER.info("Starting the Scheduler and setting ready to true");
         CronHandler.start();
         EventHandlerHelper.start();
-        setReady(true);
+        ready = true;
     }
 
     public void refresh() {
-        boolean wasReady = INSTANCE.isReady();
+        if (shuttingDown) return;
+
+        boolean wasReady = INSTANCE.ready;
         LOGGER.info(String.format("Resetting Cronmc and retaining ready status '%s'", wasReady));
 
         resetSchedule(isStartOnServerStart(), CronHandler.cron().getTimeZone(), getScheduleStrings());
@@ -154,6 +152,7 @@ public final class Cronmc {
     }
 
     public void setCronTimeZone(TimeZone timeZone) {
+        if (shuttingDown) return;
         CronHandler.setCronTimeZone(timeZone);
     }
 
@@ -233,6 +232,7 @@ public final class Cronmc {
 
         @SubscribeEvent
         public static void serverAboutToStart(FMLServerAboutToStartEvent event) {
+            Cronmc.get().setShuttingDown(false);
             if (Cronmc.get().isStartOnServerStart()) {
                 Cronmc.get().start();
             }
@@ -240,6 +240,7 @@ public final class Cronmc {
 
         @SubscribeEvent
         public static void serverStopping(FMLServerStoppingEvent event) {
+            Cronmc.get().setShuttingDown(true);
             Cronmc.get().stop();
         }
     }
