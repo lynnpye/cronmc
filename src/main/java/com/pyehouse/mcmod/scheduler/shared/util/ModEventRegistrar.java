@@ -1,4 +1,4 @@
-package com.pyehouse.mcmod.scheduler.common.util;
+package com.pyehouse.mcmod.scheduler.shared.util;
 
 import net.minecraftforge.eventbus.api.IEventBus;
 import org.apache.logging.log4j.LogManager;
