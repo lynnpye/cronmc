@@ -1,10 +1,11 @@
 package com.pyehouse.mcmod.cronmc.shared.util;
 
 import com.pyehouse.mcmod.cronmc.api.Cronmc;
-import com.pyehouse.mcmod.cronmc.api.schedule.CronHandler;
+import com.pyehouse.mcmod.cronmc.api.util.CronmcHelper;
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.config.ModConfig;
+import net.minecraftforge.fml.event.server.FMLServerStartedEvent;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -42,7 +43,7 @@ public class Config {
             builder.push("Cron TimeZone");
             cronTimeZone = builder
                     .comment("If possible, this timezone will be used for scheduling; otherwise defaults to system timezone '%s'")
-                            .define("cronTimeZone", TimeZone.getDefault().getID(), CronHandler::isTimeZoneValid);
+                            .define("cronTimeZone", TimeZone.getDefault().getID(), CronmcHelper::isCronTimeZoneValid);
             builder.pop();
 
             builder.push("Schedules");
@@ -50,8 +51,11 @@ public class Config {
                     .comment("A string in the form of <schedule type>:<schedule data>|<task type>:<task data>")
                     .defineList("scheduledTasks", Arrays.asList(
                             "event:serverStarted|op:say Cronmc here, letting you know the server is up.",
-                            "event:serverStarted|runnable:com.pyehouse.mcmod.cronmc.api.task.RunnableHandler$TestRunnable"
-                    ), Cronmc::isValidSchedule);
+                            "event:serverStarted|runnable:com.pyehouse.mcmod.cronmc.api.task.RunnableHandler$TestRunnable",
+                            "cron:* * * * *|runnable:com.pyehouse.mcmod.cronmc.api.task.RunnableHandler$TestRunnable",
+                            "cron:* * * * *|runnable:com.pyehouse.mcmod.cronmc.api.task.RunnableHandler$TestRunnable2",
+                            "event:serverStarted|op:say Cronmc here, with a cron-based op command"
+                    ), CronmcHelper::isValidSchedule);
             builder.pop();
         }
 
@@ -70,15 +74,18 @@ public class Config {
         return Arrays.copyOf(SERVER.schedules.get().toArray(), SERVER.schedules.get().size(), String[].class);
     }
 
+    private static boolean allowUpdateCronmc = false;
     public static void updateCronmc() {
+        if (!allowUpdateCronmc) return;
+
         LOGGER.info("Updating Cronmc with latest server config");
 
         String timezoneId = SERVER.cronTimeZone.get();
         TimeZone cronTimeZone = null;
 
-        if (!CronHandler.isTimeZoneValid(timezoneId)) {
+        if (!CronmcHelper.isCronTimeZoneValid(timezoneId)) {
             cronTimeZone = TimeZone.getDefault();
-            LOGGER.warn(String.format("Invalid TimeZone '%s' in cronmc-server.toml, changing to system default '%s'"
+            LOGGER.warn(String.format("\n\nInvalid TimeZone '%s' in cronmc-server.toml, changing to system default '%s'\n\n"
                     , timezoneId, cronTimeZone.getID()));
         } else {
             cronTimeZone = TimeZone.getTimeZone(timezoneId);
@@ -90,8 +97,13 @@ public class Config {
     }
 
     @SubscribeEvent
+    public static void onServerStarted(FMLServerStartedEvent event) {
+        allowUpdateCronmc = true;
+        updateCronmc();
+    }
+
+    @SubscribeEvent
     public static void onConfigUpdate(ModConfig.ModConfigEvent event) {
-        LOGGER.info(String.format("%s config updated", event.getConfig().getFileName()));
         updateCronmc();
     }
 }

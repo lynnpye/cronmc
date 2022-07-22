@@ -34,11 +34,10 @@ public class TaskTypeRegistry {
 
     public static void performTask(ScheduledTask scheduledTask) {
         for (RegistryObject<TaskHandler> taskHandlerRegistryObject : TASK_HANDLERS.getEntries()) {
-            taskHandlerRegistryObject.ifPresent((taskHandler) -> {
-                if (taskHandler.handlesTaskType(scheduledTask)) {
-                    taskHandler.handleScheduledTask(scheduledTask);
-                }
-            });
+            TaskHandler taskHandler = taskHandlerRegistryObject.get();
+            if (taskHandler.handlesTaskType(scheduledTask)) {
+                taskHandler.handleScheduledTask(scheduledTask);
+            }
         }
     }
 }

@@ -6,6 +6,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.pyehouse.mcmod.cronmc.api.Cronmc;
+import com.pyehouse.mcmod.cronmc.api.util.CronmcHelper;
 import com.pyehouse.mcmod.cronmc.shared.util.Config;
 import net.minecraft.command.CommandSource;
 import net.minecraft.command.Commands;
@@ -23,6 +24,7 @@ public class CommandHandler {
     public static final String CMD_start = "start";
     public static final String CMD_refresh = "refresh";
     public static final String CMD_settz = "settz";
+    public static final String CMD_list = "list";
 
     public static final String ARG_settz = "arg_settz";
 
@@ -59,6 +61,10 @@ public class CommandHandler {
                                                         .executes((command) -> settz(command))
                                         )
                         )
+                        .then(
+                                Commands.literal(CMD_list)
+                                        .executes((command) -> list(command))
+                        )
                 ;
         commandDispatcher.register(scheduleCommand);
     }
@@ -94,14 +100,27 @@ public class CommandHandler {
     public static int settz(CommandContext<CommandSource> commandContext) {
         String tzString = commandContext.getArgument(ARG_settz, String.class);
 
-        if (!Cronmc.get().isCronTimeZoneValid(tzString)) {
+        if (!CronmcHelper.isCronTimeZoneValid(tzString)) {
             commandContext.getSource().sendFailure(makeTC(I18N_SETTIMEZONE_FAILURE));
         } else {
             TimeZone cronTimeZone = TimeZone.getTimeZone(tzString);
             Config.setCronTimeZone(cronTimeZone);
-            //Cronmc.get().setCronTimeZone(cronTimeZone);
 
             commandContext.getSource().sendSuccess(makeTC(I18N_SETTIMEZONE_SUCCESS), true);
+        }
+
+        return 1;
+    }
+
+    public static int list(CommandContext<CommandSource> commandContext) {
+        String[] cronStrings = Cronmc.get().getCronStrings();
+
+        if (cronStrings.length < 1) {
+            Cronmc.get().opSay("No Cronmc tasks are queued");
+        }
+
+        for (String cronString : cronStrings) {
+            Cronmc.get().opSay(cronString);
         }
 
         return 1;

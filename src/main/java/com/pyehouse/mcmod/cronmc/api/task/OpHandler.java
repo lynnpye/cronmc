@@ -1,11 +1,9 @@
 package com.pyehouse.mcmod.cronmc.api.task;
 
+import com.pyehouse.mcmod.cronmc.api.Cronmc;
 import com.pyehouse.mcmod.cronmc.api.ScheduledTask;
 import com.pyehouse.mcmod.cronmc.api.TaskHandler;
-import net.minecraft.server.MinecraftServer;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.fml.server.ServerLifecycleHooks;
+import com.pyehouse.mcmod.cronmc.api.schedule.CronTask;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -23,14 +21,14 @@ public class OpHandler extends TaskHandler {
     }
 
     @Override
-    public void handleScheduledTask(ScheduledTask scheduledTask) {
-        DistExecutor.safeRunWhenOn(Dist.DEDICATED_SERVER, () -> new DistExecutor.SafeRunnable() {
-            final String taskData = scheduledTask.getTaskData();
+    public void handleScheduledTask(final ScheduledTask scheduledTask) {
+        Runnable opRunner = new Runnable() {
             @Override
             public void run() {
-                MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
-                server.getCommands().performCommand(server.createCommandSourceStack(), taskData);
+                Cronmc.get().opCommand(scheduledTask.getTaskData());
             }
-        });
+        };
+
+        Cronmc.get().launch(new CronTask(scheduledTask, opRunner));
     }
 }

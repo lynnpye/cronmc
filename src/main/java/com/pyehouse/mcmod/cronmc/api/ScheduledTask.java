@@ -1,5 +1,6 @@
 package com.pyehouse.mcmod.cronmc.api;
 
+import com.pyehouse.mcmod.cronmc.api.util.CronmcHelper;
 import net.minecraft.util.Tuple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -65,7 +66,7 @@ public class ScheduledTask implements IScheduledTask {
     public void setScheduledTask(String scheduledTask) {
         this.valid = false;
 
-        Tuple<Tuple<String, String>, Tuple<String, String>> tuple = Cronmc.splitScheduledTask(scheduledTask);
+        Tuple<Tuple<String, String>, Tuple<String, String>> tuple = CronmcHelper.splitScheduledTask(scheduledTask);
         if (tuple == null) {
             LOGGER.warn("splitScheduledTask(String) returned null, not setting scheduledTask");
             this.scheduleType = null;

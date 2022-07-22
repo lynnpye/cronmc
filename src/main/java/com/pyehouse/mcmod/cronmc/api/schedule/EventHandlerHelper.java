@@ -42,7 +42,7 @@ public class EventHandlerHelper {
             HandledEvent handledEvent = getHandledEvent(scheduledTask);
             if (handledEvent.handlesEvent(eventClass)) {
                 // iterate the task handlers to see who can deal with this
-                Cronmc.get().perform(scheduledTask);
+                Cronmc.get().performAllTaskTypeMatches(scheduledTask);
             }
         }
     }

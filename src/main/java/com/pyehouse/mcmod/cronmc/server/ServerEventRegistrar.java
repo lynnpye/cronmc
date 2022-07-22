@@ -17,9 +17,10 @@ public class ServerEventRegistrar extends ModEventRegistrar {
 
     @Override
     public void registration() {
-        modEventBus.register(Config.class);
+        modEventBus.addListener(Config::onConfigUpdate);
 
         forgeEventBus.register(CommandHandler.class);
+        forgeEventBus.addListener(Config::onServerStarted);
 
         Cronmc.get().registration(modEventBus, forgeEventBus);
     }

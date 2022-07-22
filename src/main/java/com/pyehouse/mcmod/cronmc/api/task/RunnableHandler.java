@@ -1,11 +1,9 @@
 package com.pyehouse.mcmod.cronmc.api.task;
 
+import com.pyehouse.mcmod.cronmc.api.Cronmc;
 import com.pyehouse.mcmod.cronmc.api.ScheduledTask;
 import com.pyehouse.mcmod.cronmc.api.TaskHandler;
-import net.minecraft.server.MinecraftServer;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.fml.server.ServerLifecycleHooks;
+import com.pyehouse.mcmod.cronmc.api.schedule.CronTask;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.codehaus.plexus.util.ExceptionUtils;
@@ -35,25 +33,17 @@ public class RunnableHandler extends TaskHandler {
 
     @Override
     public void handleScheduledTask(ScheduledTask scheduledTask) {
-        if (scheduledTask == null | !scheduledTask.isValid()) {
+        if (scheduledTask == null || !scheduledTask.isValid()) {
             LOGGER.warn("Tried to handle null or invalid task");
             return;
         }
 
         try {
             String runnableClassName = scheduledTask.getTaskData();
-            Class clazz = Class.forName(runnableClassName);
+            Class<?> clazz = Class.forName(runnableClassName);
             if (Runnable.class.isAssignableFrom(clazz)) {
                 Runnable runnable = (Runnable) clazz.newInstance();
-                DistExecutor.safeRunWhenOn(Dist.DEDICATED_SERVER, () -> new DistExecutor.SafeRunnable() {
-                    final Runnable runner = runnable;
-                    @Override
-                    public void run() {
-                        LOGGER.info(String.format("Cronmc starting Runnable %s", clazz.getName()));
-                        new Thread(runnable).start();
-                        LOGGER.info(String.format("Cronmc Runnable %s completed", clazz.getName()));
-                    }
-                });
+                Cronmc.get().launch(new CronTask(scheduledTask, runnable));
             }
         } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
             LOGGER.error(ExceptionUtils.getStackTrace(e));
@@ -65,20 +55,27 @@ public class RunnableHandler extends TaskHandler {
 
         @Override
         public void run() {
-            MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
-            server.getCommands().performCommand(server.createCommandSourceStack(),
-                    String.format("say Cronmc is running a Runnable %s",
-                            this.getClass().getName()
-                    ));
+            Cronmc.get().opSay("[Cronmc/TestRunnable] (Safely delete this task) Cronmc is running a Runnable %s",
+                    this.getClass().getName()
+            );
+
             try {
-                Thread.sleep(10000);
+                Thread.sleep(120000);
             } catch (InterruptedException e) {
                 LOGGER.throwing(e);
             }
-            server.getCommands().performCommand(server.createCommandSourceStack(),
-                    String.format("say Cronmc is done running Runnable %s",
-                            this.getClass().getName()
-                    ));
+
+            Cronmc.get().opSay("[Cronmc/TestRunnable] (Safely delete this task) Cronmc is done running Runnable %s",
+                        this.getClass().getName()
+            );
+        }
+    }
+
+    public static class TestRunnable2 implements Runnable {
+
+        @Override
+        public void run() {
+            Cronmc.get().opSay("[Cronmc/TestRunnable2] (Safely delete this task) Cronmc executing <<<<<");
         }
     }
 

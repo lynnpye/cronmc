@@ -2,13 +2,18 @@ package com.pyehouse.mcmod.cronmc.api;
 
 import com.pyehouse.mcmod.cronmc.api.registry.ScheduleTypeRegistry;
 import com.pyehouse.mcmod.cronmc.api.registry.TaskTypeRegistry;
-import com.pyehouse.mcmod.cronmc.api.schedule.CronHandler;
 import com.pyehouse.mcmod.cronmc.api.schedule.EventHandlerHelper;
-import net.minecraft.util.Tuple;
+import com.pyehouse.mcmod.cronmc.api.util.CronmcHelper;
+import it.sauronsoftware.cron4j.Scheduler;
+import it.sauronsoftware.cron4j.Task;
+import net.minecraft.server.MinecraftServer;
+import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.fml.event.server.FMLServerAboutToStartEvent;
 import net.minecraftforge.fml.event.server.FMLServerStoppingEvent;
+import net.minecraftforge.fml.server.ServerLifecycleHooks;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -19,38 +24,34 @@ import java.util.function.Supplier;
 public final class Cronmc {
     private static final Logger LOGGER = LogManager.getLogger();
 
-    public static final String TUPLE_DELIMITER = "|";
-    public static final String TYPE_DELIMITER = ":";
-
     private static Cronmc INSTANCE = new Cronmc();
 
     public static Cronmc get() {
         return INSTANCE;
     }
 
-    private Cronmc() {
+    private static Scheduler cron4j = new Scheduler();
 
+    public static Scheduler cron() {
+        if (cron4j == null) {
+            createNewScheduler();
+        }
+        return cron4j;
     }
+
+    private static void createNewScheduler() {
+        cron4j = new Scheduler();
+    }
+
+    private Cronmc() {}
 
     private boolean shuttingDown = false;
     private boolean startOnServerStart = true;
     private boolean ready = false;
     private Supplier<String[]> scheduleStringsSupplier = () -> new String[0];
 
-    protected void setShuttingDown(boolean shuttingDown) {
-        this.shuttingDown = shuttingDown;
-    }
-
-    public boolean isStartOnServerStart() { return this.startOnServerStart; }
-
-    public void failIfNotReady() {
-        if (!ready || shuttingDown) {
-            throw new IllegalStateException("Unsafe function called on Scheduler while not ready or shutting down");
-        }
-    }
-
-    public void setScheduleStringsSupplier(Supplier<String[]> scheduleStringsSupplier) {
-        this.scheduleStringsSupplier = scheduleStringsSupplier;
+    public boolean isReady() {
+        return ready && !shuttingDown;
     }
 
     public String[] getScheduleStrings() {
@@ -58,18 +59,8 @@ public final class Cronmc {
     }
 
     // BELOW HERE - these functions are NOT safe when Scheduler is not ready
-    public void schedule(ScheduledTask scheduledTask) {
-        failIfNotReady();
 
-        if (scheduledTask == null) {
-            LOGGER.warn("Tried to schedule a null task");
-            return;
-        }
-
-        ScheduleTypeRegistry.scheduleTask(scheduledTask);
-    }
-
-    public void perform(ScheduledTask scheduledTask) {
+    public void performAllTaskTypeMatches(ScheduledTask scheduledTask) {
         failIfNotReady();
 
         if (scheduledTask == null) {
@@ -80,8 +71,44 @@ public final class Cronmc {
         TaskTypeRegistry.performTask(scheduledTask);
     }
 
+    public void launch(Task task) {
+        failIfNotReady();
+
+        cron().launch(task);
+    }
+
     // ABOVE HERE - these functions are NOT safe when Scheduler is not ready
     // BELOW HERE - these functions are safe when Scheduler is not ready
+
+    public void schedule(String schedulePattern, Task task) {
+        cron().schedule(schedulePattern, task);
+    }
+
+    public String[] getCronStrings() {
+        return CronmcHelper.getCronStrings();
+    }
+
+    public void opSay(String msg, Object... args) {
+        DistExecutor.safeRunWhenOn(Dist.DEDICATED_SERVER, () -> new DistExecutor.SafeRunnable() {
+            @Override
+            public void run() {
+                MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+                server.getCommands().performCommand(server.createCommandSourceStack(),
+                        String.format("say " + msg, args));
+            }
+        });
+    }
+
+    public void opCommand(String msg, Object... args) {
+        DistExecutor.safeRunWhenOn(Dist.DEDICATED_SERVER, () -> new DistExecutor.SafeRunnable() {
+            @Override
+            public void run() {
+                MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+                server.getCommands().performCommand(server.createCommandSourceStack(),
+                        String.format(msg, args));
+            }
+        });
+    }
 
     /**
      * Stops current jobs, resets the supplier to use the provided schedules if the
@@ -99,44 +126,76 @@ public final class Cronmc {
         boolean wasReady = ready;
         LOGGER.info(String.format("Resetting schedule for Cronmc and retaining ready status '%s'", wasReady));
 
-        stop();
+        stop(true);
 
         // reset our Supplier
         final String[] strings = scheduleStrings == null ? new String[0] : scheduleStrings;
-        Cronmc.get().setScheduleStringsSupplier(() -> strings);
+        this.scheduleStringsSupplier = () -> strings;
 
-        if (cronTimeZone != null) {
+        if (cronTimeZone != null && !cron().getTimeZone().getID().equals(cronTimeZone.getID())) {
             setCronTimeZone(cronTimeZone);
         }
 
         if (wasReady) {
-            start();
+            get().start();
         }
-    }
 
-    public void stop() {
-        LOGGER.info("Stopping the Scheduler and setting ready to false");
-        ready = false;
-        CronHandler.stop();
-        EventHandlerHelper.stop();
-    }
-
-    public void start() {
-        if (shuttingDown) return;
-
-        LOGGER.info("Starting the Scheduler and setting ready to true");
-        CronHandler.start();
-        EventHandlerHelper.start();
-        ready = true;
+        scheduleTasks(getScheduleStrings());
     }
 
     public void refresh() {
         if (shuttingDown) return;
 
-        boolean wasReady = INSTANCE.ready;
-        LOGGER.info(String.format("Resetting Cronmc and retaining ready status '%s'", wasReady));
+        resetSchedule(startOnServerStart, cron().getTimeZone(), getScheduleStrings());
+    }
 
-        resetSchedule(isStartOnServerStart(), CronHandler.cron().getTimeZone(), getScheduleStrings());
+    public void stop() {
+        stop(false);
+    }
+
+    public void stop(boolean clearCronSchedules) {
+        LOGGER.info("Stopping the Scheduler and setting ready to false");
+        ready = false;
+        EventHandlerHelper.stop();
+
+        // stop this one last
+        safeStopCron4j();
+
+        if (clearCronSchedules) {
+            createNewScheduler();
+        }
+    }
+
+    public void start() {
+        if (shuttingDown) return;
+
+        LOGGER.info("Starting the schedulers and setting ready to true");
+        safeStartCron4j();
+
+        EventHandlerHelper.start();
+
+        ready = true;
+    }
+
+    public void safeStartCron4j() {
+        // start this one first
+        if (!cron().isStarted()) {
+            try {
+                cron().start();
+            } catch (Throwable e) {
+                LOGGER.throwing(e);
+            }
+        }
+    }
+
+    public void safeStopCron4j() {
+        if (cron4j != null) {
+            if (cron4j.isStarted()) {
+                LOGGER.info("Attempting to stop cron handler and jobs");
+                cron4j.stop();
+                LOGGER.info("Cron handler and jobs stopped");
+            }
+        }
     }
 
     public void registration(final IEventBus modEventBus, final IEventBus forgeEventBus) {
@@ -147,101 +206,49 @@ public final class Cronmc {
         EventHandlerHelper.register(modEventBus, forgeEventBus);
     }
 
-    public boolean isCronTimeZoneValid(String tzString) {
-        return CronHandler.isTimeZoneValid(tzString);
+    private void scheduleTasks(@Nonnull String[] scheduleStrings) {
+        for (String scheduleString : scheduleStrings) {
+            ScheduledTask scheduledTask = new ScheduledTask(scheduleString);
+            if (scheduledTask.isValid()) {
+                ScheduleTypeRegistry.scheduleTask(scheduledTask);
+            }
+        }
     }
 
-    public void setCronTimeZone(TimeZone timeZone) {
+    private void setCronTimeZone(TimeZone timeZone) {
         if (shuttingDown) return;
-        CronHandler.setCronTimeZone(timeZone);
+
+        if (timeZone == null) {
+            LOGGER.error("Cannot assign null TimeZone to cron");
+            return;
+        }
+        LOGGER.info(String.format("Current cron timezone is '%s'", cron().getTimeZone().getID()));
+
+        cron().setTimeZone(timeZone);
+
+        LOGGER.info(String.format("Updated cron timezone to '%s'", cron().getTimeZone().getID()));
     }
 
-    public static Tuple<Tuple<String, String>, Tuple<String, String>> splitScheduledTask(String scheduledTask) {
-        if (scheduledTask == null) {
-            LOGGER.warn("Cannot process null scheduledTask");
-            return null;
+    private void failIfNotReady() {
+        if (!isReady()) {
+            throw new IllegalStateException("Unsafe function called on Scheduler while not ready or shutting down");
         }
-
-        String trimmed = scheduledTask.trim();
-        int delimiterIndex = trimmed.indexOf(TUPLE_DELIMITER);
-        if (delimiterIndex == -1) {
-            LOGGER.warn(String.format("Missing tuple delimiter '%s' for scheduledTask '%s'", TUPLE_DELIMITER, scheduledTask));
-            return null;
-        }
-
-        if (delimiterIndex == 0) {
-            LOGGER.warn(String.format("No schedule (tuple delimiter at index 0) for scheduledTask '%s'", scheduledTask));
-            return null;
-        }
-
-        if (delimiterIndex + 1 >= trimmed.length()) {
-            LOGGER.warn(String.format("No task (tuple delimiter at index %d of %d) for scheduledTask '%s'", delimiterIndex, trimmed.length() - 1, scheduledTask));
-            return null;
-        }
-
-        String newSchedule = trimmed.substring(0, delimiterIndex);
-        String newTask = trimmed.substring(delimiterIndex + 1);
-
-        String[] newScheduleBits = newSchedule.split(TYPE_DELIMITER, 2);
-        String[] newTaskBits = newTask.split(TYPE_DELIMITER, 2);
-
-        if (newScheduleBits.length != 2) {
-            LOGGER.warn(String.format("Malformed schedule (missing type delimiter '%s') for scheduledTask '%s'", TYPE_DELIMITER, scheduledTask));
-            return null;
-        }
-
-        if (newTaskBits.length != 2) {
-            LOGGER.warn(String.format("Malformed task (missing type delimiter '%s') for scheduledTask '%s'", TYPE_DELIMITER, scheduledTask));
-            return null;
-        }
-
-        for(int i = 0; i < 2; i++) {
-            newScheduleBits[i] = newScheduleBits[i].trim();
-            newTaskBits[i] = newTaskBits[i].trim();
-        }
-
-        if (newScheduleBits[0].isEmpty()) {
-            LOGGER.warn(String.format("Malformed schedule (missing type) for scheduledTask '%s'", scheduledTask));
-            return null;
-        }
-
-        if (newScheduleBits[1].isEmpty()) {
-            LOGGER.warn(String.format("Malformed schedule (missing data) for scheduledTask '%s'", scheduledTask));
-            return null;
-        }
-
-        if (newTaskBits[0].isEmpty()) {
-            LOGGER.warn(String.format("Malformed task (missing type) for scheduledTask '%s'", scheduledTask));
-            return null;
-        }
-
-        if (newTaskBits[1].isEmpty()) {
-            LOGGER.warn(String.format("Malformed task (missing data) for scheduledTask '%s'", scheduledTask));
-            return null;
-        }
-
-        return new Tuple<>(new Tuple<>(newScheduleBits[0], newScheduleBits[1]), new Tuple<>(newTaskBits[0], newTaskBits[1]));
     }
 
-    public static boolean isValidSchedule(Object scheduledTaskObj) {
-        if (scheduledTaskObj == null) return false;
-        return splitScheduledTask(scheduledTaskObj.toString()) != null;
-    }
-
-    public static class CronmcLifecycleHandler {
+    private static class CronmcLifecycleHandler {
 
         @SubscribeEvent
         public static void serverAboutToStart(FMLServerAboutToStartEvent event) {
-            Cronmc.get().setShuttingDown(false);
-            if (Cronmc.get().isStartOnServerStart()) {
-                Cronmc.get().start();
+            get().shuttingDown = false;
+            if (get().startOnServerStart) {
+                get().start();
             }
         }
 
         @SubscribeEvent
         public static void serverStopping(FMLServerStoppingEvent event) {
-            Cronmc.get().setShuttingDown(true);
-            Cronmc.get().stop();
+            get().shuttingDown = true;
+            get().stop();
         }
     }
 }
