@@ -20,7 +20,7 @@ public class ServerEventRegistrar extends ModEventRegistrar {
         modEventBus.addListener(Config::onConfigUpdate);
 
         forgeEventBus.register(CommandHandler.class);
-        forgeEventBus.addListener(Config::onServerStarted);
+        forgeEventBus.addListener(Config::onServerAboutToStart);
 
         Cronmc.get().registration(modEventBus, forgeEventBus);
     }

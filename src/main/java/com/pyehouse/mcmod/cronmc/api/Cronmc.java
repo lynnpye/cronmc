@@ -24,7 +24,7 @@ import java.util.function.Supplier;
 public final class Cronmc {
     private static final Logger LOGGER = LogManager.getLogger();
 
-    private static Cronmc INSTANCE = new Cronmc();
+    private static final Cronmc INSTANCE = new Cronmc();
 
     public static Cronmc get() {
         return INSTANCE;
@@ -153,15 +153,15 @@ public final class Cronmc {
         stop(false);
     }
 
-    public void stop(boolean clearCronSchedules) {
+    public void stop(boolean clear) {
         LOGGER.info("Stopping the Scheduler and setting ready to false");
         ready = false;
-        EventHandlerHelper.stop();
+        EventHandlerHelper.stop(clear);
 
         // stop this one last
         safeStopCron4j();
 
-        if (clearCronSchedules) {
+        if (clear) {
             createNewScheduler();
         }
     }
@@ -203,7 +203,6 @@ public final class Cronmc {
 
         ScheduleTypeRegistry.register(modEventBus);
         TaskTypeRegistry.register(modEventBus);
-        EventHandlerHelper.register(modEventBus, forgeEventBus);
     }
 
     private void scheduleTasks(@Nonnull String[] scheduleStrings) {

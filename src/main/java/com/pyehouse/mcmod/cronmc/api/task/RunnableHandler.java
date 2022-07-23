@@ -62,7 +62,6 @@ public class RunnableHandler extends TaskHandler {
             try {
                 Thread.sleep(120000);
             } catch (InterruptedException e) {
-                LOGGER.throwing(e);
             }
 
             Cronmc.get().opSay("[Cronmc/TestRunnable] (Safely delete this task) Cronmc is done running Runnable %s",

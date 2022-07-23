@@ -23,22 +23,6 @@ public final class CronmcHelper {
 
     private CronmcHelper() {}
 
-    public static String getUsefulEventName(Class<?> clazz) {
-        if (clazz == null) {
-            throw new IllegalArgumentException("Cannot derive useful class name from null class");
-        }
-
-        String name = clazz.getName();
-
-        if (!name.contains("$")) {
-            return clazz.getSimpleName();
-        }
-
-        String supername = clazz.getSuperclass().getSimpleName();
-
-        return String.format("%s.%s", supername, name);
-    }
-
     public static TaskCollector getCron4jMemoryCollector(@Nonnull Scheduler scheduler) {
         TaskCollector memoryCollector = null;
 
@@ -46,9 +30,10 @@ public final class CronmcHelper {
             Field mcField = scheduler.getClass().getDeclaredField("memoryTaskCollector");
             mcField.setAccessible(true);
             memoryCollector = (TaskCollector) mcField.get(scheduler);
-        } finally {
-            return memoryCollector;
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            LOGGER.throwing(e);
         }
+        return memoryCollector;
     }
 
     public static boolean isCronTimeZoneValid(Object tzString) {
