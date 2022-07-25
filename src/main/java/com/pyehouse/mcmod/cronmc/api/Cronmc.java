@@ -4,8 +4,11 @@ import com.pyehouse.mcmod.cronmc.api.registry.ScheduleTypeRegistry;
 import com.pyehouse.mcmod.cronmc.api.registry.TaskTypeRegistry;
 import com.pyehouse.mcmod.cronmc.api.schedule.EventHandlerHelper;
 import com.pyehouse.mcmod.cronmc.api.util.CronmcHelper;
+import com.pyehouse.mcmod.cronmc.shared.util.Config;
+import com.pyehouse.mcmod.cronmc.shared.util.TC;
 import it.sauronsoftware.cron4j.Scheduler;
 import it.sauronsoftware.cron4j.Task;
+import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.server.MinecraftServer;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -92,9 +95,15 @@ public final class Cronmc {
         DistExecutor.safeRunWhenOn(Dist.DEDICATED_SERVER, () -> new DistExecutor.SafeRunnable() {
             @Override
             public void run() {
-                MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
-                server.getCommands().performCommand(server.createCommandSourceStack(),
-                        String.format("say " + msg, args));
+                LOGGER.info(String.format("[Cronmc] say " + msg, args));
+                if (Config.SERVER.outputToConsole.get()) {
+                    MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+                    for (ServerPlayerEntity player : server.getPlayerList().getPlayers()) {
+                        if (player.hasPermissions(Config.SERVER.consoleMessageMinPermissionLevel.get())) {
+                            player.sendMessage(TC.simpleTC("say " + msg, args), player.getUUID());
+                        }
+                    }
+                }
             }
         });
     }
@@ -103,8 +112,10 @@ public final class Cronmc {
         DistExecutor.safeRunWhenOn(Dist.DEDICATED_SERVER, () -> new DistExecutor.SafeRunnable() {
             @Override
             public void run() {
+                LOGGER.info(String.format("[Cronmc] Executing OP command: " + msg, args));
                 MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
-                server.getCommands().performCommand(server.createCommandSourceStack(),
+                server.getCommands().performCommand(
+                        server.createCommandSourceStack().withPermission(Config.SERVER.consoleMessageMinPermissionLevel.get()),
                         String.format(msg, args));
             }
         });
