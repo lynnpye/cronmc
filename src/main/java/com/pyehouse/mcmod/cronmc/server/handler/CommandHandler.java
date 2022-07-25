@@ -5,19 +5,25 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.pyehouse.mcmod.cronmc.api.Cronmc;
 import com.pyehouse.mcmod.cronmc.api.util.CronmcHelper;
 import com.pyehouse.mcmod.cronmc.shared.util.Config;
 import net.minecraft.command.CommandSource;
 import net.minecraft.command.Commands;
+import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.TranslationTextComponent;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.codehaus.plexus.util.ExceptionUtils;
 
 import java.util.TimeZone;
 
 public class CommandHandler {
+    private static final Logger LOGGER = LogManager.getLogger();
 
     public static final String CMD_command = "cronmc";
     public static final String CMD_stop = "stop";
@@ -115,12 +121,19 @@ public class CommandHandler {
     public static int list(CommandContext<CommandSource> commandContext) {
         String[] cronStrings = Cronmc.get().getCronStrings();
 
-        if (cronStrings.length < 1) {
-            Cronmc.get().opSay("No Cronmc tasks are queued");
-        }
+        ServerPlayerEntity player = null;
+        try {
+            player = commandContext.getSource().getPlayerOrException();
 
-        for (String cronString : cronStrings) {
-            Cronmc.get().opSay(cronString);
+            if (cronStrings.length < 1) {
+                Cronmc.get().opSay(player, "No Cronmc tasks are queued");
+            }
+
+            for (String cronString : cronStrings) {
+                Cronmc.get().opSay(player, cronString);
+            }
+        } catch (CommandSyntaxException e) {
+            LOGGER.error(String.format("Error trying to run cronmc list: %s", ExceptionUtils.getStackTrace(e)));
         }
 
         return 1;

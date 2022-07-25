@@ -92,15 +92,23 @@ public final class Cronmc {
     }
 
     public void opSay(String msg, Object... args) {
+        opSay(null, msg, args);
+    }
+
+    public void opSay(ServerPlayerEntity serverPlayer, String msg, Object... args) {
         DistExecutor.safeRunWhenOn(Dist.DEDICATED_SERVER, () -> new DistExecutor.SafeRunnable() {
             @Override
             public void run() {
                 LOGGER.info(String.format("[Cronmc] say " + msg, args));
+                if (serverPlayer != null) {
+                    tellPlayer(serverPlayer, msg, args);
+                }
                 if (Config.SERVER.outputToConsole.get()) {
                     MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
                     for (ServerPlayerEntity player : server.getPlayerList().getPlayers()) {
-                        if (player.hasPermissions(Config.SERVER.consoleMessageMinPermissionLevel.get())) {
-                            player.sendMessage(TC.simpleTC("say " + msg, args), player.getUUID());
+                        if (player.hasPermissions(Config.SERVER.consoleMessageMinPermissionLevel.get())
+                            || (serverPlayer == null || !serverPlayer.getUUID().equals(player.getUUID()))) {
+                            tellPlayer(player, msg, args);
                         }
                     }
                 }
@@ -117,6 +125,15 @@ public final class Cronmc {
                 server.getCommands().performCommand(
                         server.createCommandSourceStack().withPermission(Config.SERVER.consoleMessageMinPermissionLevel.get()),
                         String.format(msg, args));
+            }
+        });
+    }
+
+    public void tellPlayer(ServerPlayerEntity player, String msg, Object... args) {
+        DistExecutor.safeRunWhenOn(Dist.DEDICATED_SERVER, () -> new DistExecutor.SafeRunnable() {
+            @Override
+            public void run() {
+                player.sendMessage(TC.simpleTC(msg, args), player.getUUID());
             }
         });
     }
