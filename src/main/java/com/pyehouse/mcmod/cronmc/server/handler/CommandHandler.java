@@ -9,11 +9,11 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.pyehouse.mcmod.cronmc.api.Cronmc;
 import com.pyehouse.mcmod.cronmc.api.util.CronmcHelper;
 import com.pyehouse.mcmod.cronmc.shared.util.Config;
-import net.minecraft.command.CommandSource;
-import net.minecraft.command.Commands;
-import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.util.text.ITextComponent;
-import net.minecraft.util.text.TranslationTextComponent;
+import net.minecraft.commands.CommandSource;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+import net.minecraft.network.chat.TranslatableComponent;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import org.apache.logging.log4j.LogManager;
@@ -42,9 +42,9 @@ public class CommandHandler {
 
     @SubscribeEvent
     public static void onRegisterCommand(RegisterCommandsEvent event) {
-        final CommandDispatcher<CommandSource> commandDispatcher = event.getDispatcher();
+        final CommandDispatcher<CommandSourceStack> commandDispatcher = event.getDispatcher();
 
-        LiteralArgumentBuilder<CommandSource> scheduleCommand =
+        LiteralArgumentBuilder<CommandSourceStack> scheduleCommand =
                 Commands.literal(CMD_command)
                         .requires((commandSource) -> commandSource.hasPermission(4))
                         .then(
@@ -63,7 +63,7 @@ public class CommandHandler {
                         .then(
                                 Commands.literal(CMD_settz)
                                         .then(
-                                                RequiredArgumentBuilder.<CommandSource, String>argument(ARG_settz, StringArgumentType.greedyString())
+                                                RequiredArgumentBuilder.<CommandSourceStack, String>argument(ARG_settz, StringArgumentType.greedyString())
                                                         .executes((command) -> settz(command))
                                         )
                         )
@@ -75,11 +75,11 @@ public class CommandHandler {
         commandDispatcher.register(scheduleCommand);
     }
 
-    static ITextComponent makeTC(String id, String... extra) {
-        return new TranslationTextComponent(id, (Object[]) extra);
+    static TranslatableComponent makeTC(String id, String... extra) {
+        return new TranslatableComponent(id, (Object[]) extra);
     }
 
-    public static int start(CommandContext<CommandSource> commandContext) {
+    public static int start(CommandContext<CommandSourceStack> commandContext) {
         Cronmc.get().start();
 
         commandContext.getSource().sendSuccess(makeTC(I18N_START_SUCCESS), true);
@@ -87,7 +87,7 @@ public class CommandHandler {
         return 1;
     }
 
-    public static int stop(CommandContext<CommandSource> commandContext) {
+    public static int stop(CommandContext<CommandSourceStack> commandContext) {
         Cronmc.get().stop();
 
         commandContext.getSource().sendSuccess(makeTC(I18N_STOP_SUCCESS), true);
@@ -95,7 +95,7 @@ public class CommandHandler {
         return 1;
     }
 
-    public static int refresh(CommandContext<CommandSource> commandContext) {
+    public static int refresh(CommandContext<CommandSourceStack> commandContext) {
         Cronmc.get().refresh();
 
         commandContext.getSource().sendSuccess(makeTC(I18N_REFRESH_SUCCESS), true);
@@ -103,7 +103,7 @@ public class CommandHandler {
         return 1;
     }
 
-    public static int settz(CommandContext<CommandSource> commandContext) {
+    public static int settz(CommandContext<CommandSourceStack> commandContext) {
         String tzString = commandContext.getArgument(ARG_settz, String.class);
 
         if (!CronmcHelper.isCronTimeZoneValid(tzString)) {
@@ -118,10 +118,10 @@ public class CommandHandler {
         return 1;
     }
 
-    public static int list(CommandContext<CommandSource> commandContext) {
+    public static int list(CommandContext<CommandSourceStack> commandContext) {
         String[] cronStrings = Cronmc.get().getCronStrings();
 
-        ServerPlayerEntity player = null;
+        ServerPlayer player = null;
         try {
             player = commandContext.getSource().getPlayerOrException();
 

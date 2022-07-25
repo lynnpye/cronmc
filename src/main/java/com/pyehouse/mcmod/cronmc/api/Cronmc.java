@@ -8,15 +8,15 @@ import com.pyehouse.mcmod.cronmc.shared.util.Config;
 import com.pyehouse.mcmod.cronmc.shared.util.TC;
 import it.sauronsoftware.cron4j.Scheduler;
 import it.sauronsoftware.cron4j.Task;
-import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.fml.event.server.FMLServerAboutToStartEvent;
-import net.minecraftforge.fml.event.server.FMLServerStoppingEvent;
-import net.minecraftforge.fml.server.ServerLifecycleHooks;
+import net.minecraftforge.fmllegacy.server.ServerLifecycleHooks;
+import net.minecraftforge.fmlserverevents.FMLServerAboutToStartEvent;
+import net.minecraftforge.fmlserverevents.FMLServerStoppingEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -95,7 +95,7 @@ public final class Cronmc {
         opSay(null, msg, args);
     }
 
-    public void opSay(ServerPlayerEntity serverPlayer, String msg, Object... args) {
+    public void opSay(ServerPlayer serverPlayer, String msg, Object... args) {
         DistExecutor.safeRunWhenOn(Dist.DEDICATED_SERVER, () -> new DistExecutor.SafeRunnable() {
             @Override
             public void run() {
@@ -105,7 +105,7 @@ public final class Cronmc {
                 }
                 if (Config.SERVER.outputToConsole.get()) {
                     MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
-                    for (ServerPlayerEntity player : server.getPlayerList().getPlayers()) {
+                    for (ServerPlayer player : server.getPlayerList().getPlayers()) {
                         if (player.hasPermissions(Config.SERVER.consoleMessageMinPermissionLevel.get())
                             || (serverPlayer == null || !serverPlayer.getUUID().equals(player.getUUID()))) {
                             tellPlayer(player, msg, args);
@@ -129,7 +129,7 @@ public final class Cronmc {
         });
     }
 
-    public void tellPlayer(ServerPlayerEntity player, String msg, Object... args) {
+    public void tellPlayer(ServerPlayer player, String msg, Object... args) {
         DistExecutor.safeRunWhenOn(Dist.DEDICATED_SERVER, () -> new DistExecutor.SafeRunnable() {
             @Override
             public void run() {
