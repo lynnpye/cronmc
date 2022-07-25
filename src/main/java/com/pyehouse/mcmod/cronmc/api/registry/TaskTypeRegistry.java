@@ -7,9 +7,9 @@ import com.pyehouse.mcmod.cronmc.api.task.OpHandler;
 import com.pyehouse.mcmod.cronmc.api.task.RunnableHandler;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.fmllegacy.RegistryObject;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.RegistryBuilder;
+import net.minecraftforge.registries.RegistryObject;
 
 public class TaskTypeRegistry {
 
