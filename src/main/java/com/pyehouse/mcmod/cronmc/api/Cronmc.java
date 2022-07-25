@@ -10,13 +10,14 @@ import it.sauronsoftware.cron4j.Scheduler;
 import it.sauronsoftware.cron4j.Task;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.event.server.ServerAboutToStartEvent;
+import net.minecraftforge.event.server.ServerStoppingEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.fmllegacy.server.ServerLifecycleHooks;
-import net.minecraftforge.fmlserverevents.FMLServerAboutToStartEvent;
-import net.minecraftforge.fmlserverevents.FMLServerStoppingEvent;
+import net.minecraftforge.server.ServerLifecycleHooks;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -133,7 +134,7 @@ public final class Cronmc {
         DistExecutor.safeRunWhenOn(Dist.DEDICATED_SERVER, () -> new DistExecutor.SafeRunnable() {
             @Override
             public void run() {
-                player.sendMessage(TC.simpleTC(msg, args), player.getUUID());
+                player.sendSystemMessage(TC.simpleTC(msg, args));
             }
         });
     }
@@ -265,7 +266,7 @@ public final class Cronmc {
     private static class CronmcLifecycleHandler {
 
         @SubscribeEvent
-        public static void serverAboutToStart(FMLServerAboutToStartEvent event) {
+        public static void serverAboutToStart(ServerAboutToStartEvent event) {
             get().shuttingDown = false;
             if (get().startOnServerStart) {
                 get().start();
@@ -273,7 +274,7 @@ public final class Cronmc {
         }
 
         @SubscribeEvent
-        public static void serverStopping(FMLServerStoppingEvent event) {
+        public static void serverStopping(ServerStoppingEvent event) {
             get().shuttingDown = true;
             get().stop();
         }

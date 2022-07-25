@@ -9,18 +9,21 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.pyehouse.mcmod.cronmc.api.Cronmc;
 import com.pyehouse.mcmod.cronmc.api.util.CronmcHelper;
 import com.pyehouse.mcmod.cronmc.shared.util.Config;
-import net.minecraft.commands.CommandSource;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.DistExecutor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.codehaus.plexus.util.ExceptionUtils;
 
 import java.util.TimeZone;
+import java.util.function.Supplier;
+
+import static com.pyehouse.mcmod.cronmc.shared.util.TC.makeTC;
 
 public class CommandHandler {
     private static final Logger LOGGER = LogManager.getLogger();
@@ -75,10 +78,6 @@ public class CommandHandler {
         commandDispatcher.register(scheduleCommand);
     }
 
-    static TranslatableComponent makeTC(String id, String... extra) {
-        return new TranslatableComponent(id, (Object[]) extra);
-    }
-
     public static int start(CommandContext<CommandSourceStack> commandContext) {
         Cronmc.get().start();
 
@@ -119,22 +118,32 @@ public class CommandHandler {
     }
 
     public static int list(CommandContext<CommandSourceStack> commandContext) {
-        String[] cronStrings = Cronmc.get().getCronStrings();
+        DistExecutor.safeRunWhenOn(Dist.DEDICATED_SERVER, new Supplier<DistExecutor.SafeRunnable>() {
+            @Override
+            public DistExecutor.SafeRunnable get() {
+                return new DistExecutor.SafeRunnable() {
+                    @Override
+                    public void run() {
+                        String[] cronStrings = Cronmc.get().getCronStrings();
 
-        ServerPlayer player = null;
-        try {
-            player = commandContext.getSource().getPlayerOrException();
+                        ServerPlayer player = null;
+                        try {
+                            player = commandContext.getSource().getPlayerOrException();
+                        } catch (CommandSyntaxException e) {
+                            LOGGER.error(String.format("Error trying to run cronmc list: %s", ExceptionUtils.getStackTrace(e)));
+                        }
 
-            if (cronStrings.length < 1) {
-                Cronmc.get().opSay(player, "No Cronmc tasks are queued");
+                        if (cronStrings.length < 1) {
+                            Cronmc.get().opSay(player, "No Cronmc tasks are queued");
+                        }
+
+                        for (String cronString : cronStrings) {
+                            Cronmc.get().opSay(player, cronString);
+                        }
+                    }
+                };
             }
-
-            for (String cronString : cronStrings) {
-                Cronmc.get().opSay(player, cronString);
-            }
-        } catch (CommandSyntaxException e) {
-            LOGGER.error(String.format("Error trying to run cronmc list: %s", ExceptionUtils.getStackTrace(e)));
-        }
+        });
 
         return 1;
     }

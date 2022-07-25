@@ -3,10 +3,10 @@ package com.pyehouse.mcmod.cronmc.shared.util;
 import com.pyehouse.mcmod.cronmc.api.Cronmc;
 import com.pyehouse.mcmod.cronmc.api.util.CronmcHelper;
 import net.minecraftforge.common.ForgeConfigSpec;
+import net.minecraftforge.event.server.ServerAboutToStartEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.event.config.ModConfigEvent;
-import net.minecraftforge.fmlserverevents.FMLServerAboutToStartEvent;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -121,7 +121,7 @@ public class Config {
     }
 
     @SubscribeEvent(priority = EventPriority.HIGH)
-    public static void onServerAboutToStart(FMLServerAboutToStartEvent event) {
+    public static void onServerAboutToStart(ServerAboutToStartEvent event) {
         allowUpdateCronmc = true;
         updateCronmc();
     }

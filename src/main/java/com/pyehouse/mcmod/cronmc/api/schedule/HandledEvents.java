@@ -5,13 +5,13 @@ import com.pyehouse.mcmod.cronmc.api.ScheduledTask;
 import net.minecraftforge.event.CommandEvent;
 import net.minecraftforge.event.DifficultyChangeEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.event.level.ExplosionEvent;
+import net.minecraftforge.event.level.LevelEvent;
+import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.event.village.VillageSiegeEvent;
-import net.minecraftforge.event.world.ExplosionEvent;
-import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fmlserverevents.FMLServerStartedEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -31,11 +31,11 @@ public final class HandledEvents {
         return HandledEvent.valueOf(scheduledTask.getScheduleData());
     }
 
-    public static final Consumer<FMLServerStartedEvent> FML_SERVER_STARTED_EVENT_CONSUMER =
-            new Consumer<FMLServerStartedEvent>() {
+    public static final Consumer<ServerStartedEvent> FML_SERVER_STARTED_EVENT_CONSUMER =
+            new Consumer<ServerStartedEvent>() {
                 @SubscribeEvent
                 @Override
-                public void accept(FMLServerStartedEvent event) {
+                public void accept(ServerStartedEvent event) {
                     EventHandlerHelper.fireForEvent(event, HandledEvent.FML_SERVER_STARTED_EVENT);
                 }
             };
@@ -55,11 +55,11 @@ public final class HandledEvents {
                     EventHandlerHelper.fireForEvent(event, HandledEvent.PLAYER_CHANGE_GAME_MODE_EVENT);
                 }
             };
-    public static final Consumer<WorldEvent.Load> WORLD_LOAD_EVENT_CONSUMER =
-            new Consumer<WorldEvent.Load>() {
+    public static final Consumer<LevelEvent.Load> WORLD_LOAD_EVENT_CONSUMER =
+            new Consumer<LevelEvent.Load>() {
                 @SubscribeEvent
                 @Override
-                public void accept(WorldEvent.Load event) {
+                public void accept(LevelEvent.Load event) {
                     EventHandlerHelper.fireForEvent(event, HandledEvent.WORLD_LOAD_EVENT);
                 }
             };
@@ -98,10 +98,10 @@ public final class HandledEvents {
 
 
     public enum HandledEvent {
-        FML_SERVER_STARTED_EVENT(FML_SERVER_STARTED_EVENT_CONSUMER, FMLServerStartedEvent.class, CronmcMod::forgeBus)
+        FML_SERVER_STARTED_EVENT(FML_SERVER_STARTED_EVENT_CONSUMER, ServerStartedEvent.class, CronmcMod::forgeBus)
         , COMMAND_EVENT(COMMAND_EVENT_CONSUMER, CommandEvent.class, CronmcMod::forgeBus)
         , PLAYER_CHANGE_GAME_MODE_EVENT(PLAYER_CHANGE_GAME_MODE_EVENT_CONSUMER, PlayerEvent.PlayerChangeGameModeEvent.class, CronmcMod::forgeBus)
-        , WORLD_LOAD_EVENT(WORLD_LOAD_EVENT_CONSUMER, WorldEvent.Load.class, CronmcMod::forgeBus)
+        , WORLD_LOAD_EVENT(WORLD_LOAD_EVENT_CONSUMER, LevelEvent.Load.class, CronmcMod::forgeBus)
         , VILLAGE_SIEGE_EVENT(VILLAGE_SIEGE_EVENT_CONSUMER, VillageSiegeEvent.class, CronmcMod::forgeBus)
         , DIFFICULTY_CHANGE_EVENT(DIFFICULTY_CHANGE_EVENT_CONSUMER, DifficultyChangeEvent.class, CronmcMod::forgeBus)
         , EXPLOSION_EVENT(EXPLOSION_EVENT_CONSUMER, ExplosionEvent.class, CronmcMod::forgeBus)
