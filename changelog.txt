@@ -1,4 +1,4 @@
-1.17-1.0
+1.17-1.1
     hextun01
         Made it properly server-side only (so that if not on a client, you don't get flagged for not having it)
 ========
