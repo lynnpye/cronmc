@@ -5,7 +5,7 @@ plugins {
     id 'com.github.johnrengelman.shadow' version '7.1.2'
 }
 
-version = '1.19-1.0'
+version = '1.19-1.1'
 group = 'com.pyehouse.cronmc' // http://maven.apache.org/guides/mini/guide-naming-conventions.html
 archivesBaseName = 'cronmc'
 
