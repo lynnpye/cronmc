@@ -14,9 +14,11 @@ import net.minecraftforge.registries.RegistryObject;
 public class TaskTypeRegistry {
 
     public static final String REGISTER_ID = "tasktype";
+    public static final ResourceLocation REGISTER_URL =
+            new ResourceLocation(CronmcMod.MODID, REGISTER_ID);
 
     private static final DeferredRegister<TaskHandler> TASK_HANDLERS =
-            DeferredRegister.create(TaskHandler.class, CronmcMod.MODID);
+            DeferredRegister.create(REGISTER_URL, CronmcMod.MODID);
 
     public static final RegistryObject<TaskHandler> OP_HANDLER = TASK_HANDLERS
             .register(OpHandler.HANDLER_ID, OpHandler::new);
@@ -24,7 +26,7 @@ public class TaskTypeRegistry {
             .register(RunnableHandler.HANDLER_ID, RunnableHandler::new);
 
     public static void register(IEventBus modEventBus) {
-        TASK_HANDLERS.makeRegistry(REGISTER_ID, () ->
+        TASK_HANDLERS.makeRegistry(TaskHandler.class, () ->
                 new RegistryBuilder<TaskHandler>()
                         .setName(new ResourceLocation(CronmcMod.MODID, REGISTER_ID))
                         .setType(TaskHandler.class)
